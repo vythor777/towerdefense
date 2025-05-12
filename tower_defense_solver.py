@@ -3,107 +3,107 @@ import sys
 import codecs
 import tkinter as tk
 
-def ler_arquivo(input_file):
+def ler_arquivo(arquivo_entrada):
     """Lê o arquivo de entrada e retorna o tabuleiro."""
     try:
-        with open(input_file, 'r', encoding='utf-8') as f:
+        with open(arquivo_entrada, 'r', encoding='utf-8') as f:
             n = int(f.readline().strip())
-            board = [f.readline().strip() for _ in range(n)]
+            tabuleiro = [f.readline().strip() for _ in range(n)]
     except (UnicodeDecodeError, ValueError):
         try:
-            with open(input_file, 'r', encoding='utf-16') as f:
+            with open(arquivo_entrada, 'r', encoding='utf-16') as f:
                 n = int(f.readline().strip())
-                board = [f.readline().strip() for _ in range(n)]
+                tabuleiro = [f.readline().strip() for _ in range(n)]
         except (UnicodeDecodeError, ValueError):
-            with open(input_file, 'rb') as f:
-                raw_data = f.read()
-                text = raw_data.decode('utf-16' if raw_data.startswith(codecs.BOM_UTF16) else 'utf-8', errors='ignore')
-                lines = text.splitlines()
-                n = int(lines[0].strip())
-                board = [line.strip() for line in lines[1:n+1]]
-    return n, board
+            with open(arquivo_entrada, 'rb') as f:
+                dados_brutos = f.read()
+                texto = dados_brutos.decode('utf-16' if dados_brutos.startswith(codecs.BOM_UTF16) else 'utf-8', errors='ignore')
+                linhas = texto.splitlines()
+                n = int(linhas[0].strip())
+                tabuleiro = [linha.strip() for linha in linhas[1:n+1]]
+    return n, tabuleiro
 
-def calcular_dano(board, n):
+def calcular_dano(tabuleiro, n):
     """Calcula as posições das torres e o dano em cada célula."""
     # Encontra as posições das torres
-    towers = [(i, j) for i in range(n) for j in range(n) if board[i][j] == 'T']
+    torres = [(i, j) for i in range(n) for j in range(n) if tabuleiro[i][j] == 'T']
     
     # Calcula as células atacadas pelas torres
-    attacked_cells = {}
+    celulas_atacadas = {}
     for i in range(n):
         for j in range(n):
-            if board[i][j] != 'T':
-                damage = sum(10 for tower_i, tower_j in towers 
-                           if abs(i - tower_i) <= 1 and abs(j - tower_j) <= 1 and (i, j) != (tower_i, tower_j))
-                if damage > 0:
-                    attacked_cells[(i, j)] = damage
+            if tabuleiro[i][j] != 'T':
+                dano = sum(10 for torre_i, torre_j in torres 
+                           if abs(i - torre_i) <= 1 and abs(j - torre_j) <= 1 and (i, j) != (torre_i, torre_j))
+                if dano > 0:
+                    celulas_atacadas[(i, j)] = dano
     
-    return towers, attacked_cells
+    return torres, celulas_atacadas
 
-def solve_tower_defense(input_file, output_file):
+def resolver_tower_defense(arquivo_entrada, arquivo_saida):
     # Lê o arquivo de entrada
-    n, board = ler_arquivo(input_file)
+    n, tabuleiro = ler_arquivo(arquivo_entrada)
     
     # Calcula o dano
-    _, attacked_cells = calcular_dano(board, n)
+    _, celulas_atacadas = calcular_dano(tabuleiro, n)
     
     # Direções possíveis: Sul, Norte, Leste, Oeste
-    directions = [(1, 0, 'S'), (-1, 0, 'N'), (0, 1, 'L'), (0, -1, 'O')]
+    direcoes = [(1, 0, 'S'), (-1, 0, 'N'), (0, 1, 'L'), (0, -1, 'O')]
     
     # Algoritmo de Dijkstra
-    start, end = (0, 0), (n-1, n-1)
-    pq = [(0, start[0], start[1], "")]
-    visited = set()
+    inicio, fim = (0, 0), (n-1, n-1)
+    fila_prioridade = [(0, inicio[0], inicio[1], "")]
+    visitados = set()
     
-    while pq:
-        damage, i, j, path = heapq.heappop(pq)
+    while fila_prioridade:
+        dano, i, j, caminho = heapq.heappop(fila_prioridade)
         
-        if (i, j) == end:
-            with open(output_file, 'w') as f:
-                f.write(path)
-            return path, damage
+        if (i, j) == fim:
+            with open(arquivo_saida, 'w') as f:
+                f.write(caminho)
+            return caminho, dano
         
-        if (i, j) in visited:
+        if (i, j) in visitados:
             continue
         
-        visited.add((i, j))
+        visitados.add((i, j))
         
-        for di, dj, direction in directions:
+        for di, dj, direcao in direcoes:
             ni, nj = i + di, j + dj
             
-            if 0 <= ni < n and 0 <= nj < n and board[ni][nj] != 'T' and (ni, nj) not in visited:
-                new_damage = damage if (ni, nj) == end else damage + attacked_cells.get((ni, nj), 0)
-                heapq.heappush(pq, (new_damage, ni, nj, path + direction))
+            if 0 <= ni < n and 0 <= nj < n and tabuleiro[ni][nj] != 'T' and (ni, nj) not in visitados:
+                novo_dano = dano if (ni, nj) == fim else dano + celulas_atacadas.get((ni, nj), 0)
+                heapq.heappush(fila_prioridade, (novo_dano, ni, nj, caminho + direcao))
     
-    with open(output_file, 'w') as f:
+    with open(arquivo_saida, 'w') as f:
         f.write("")
     return "", 0
 
-def visualizar_solucao(input_file, output_file=None):
+def visualizar_solucao(arquivo_entrada, arquivo_saida=None):
     """Visualiza graficamente a solução do problema."""
     # Configuração da janela
-    root = tk.Tk()
-    root.title("SOLUÇÃO IA TOWER DEFENSE")
-    root.geometry("700x700")
+    raiz = tk.Tk()
+    raiz.title("SOLUÇÃO IA TOWER DEFENSE")
+    raiz.geometry("700x700")
     
     # Canvas e frames
-    canvas = tk.Canvas(root, bg="white")
+    canvas = tk.Canvas(raiz, bg="white")
     canvas.pack(fill=tk.BOTH, expand=True, padx=20, pady=20)
     
-    info_frame = tk.Frame(root)
-    info_frame.pack(fill=tk.X, padx=20, pady=10)
+    frame_info = tk.Frame(raiz)
+    frame_info.pack(fill=tk.X, padx=20, pady=10)
     
-    path_label = tk.Label(info_frame, text="Caminho: ", font=("Arial", 12))
-    path_label.pack(anchor=tk.W)
+    rotulo_caminho = tk.Label(frame_info, text="Caminho: ", font=("Arial", 12))
+    rotulo_caminho.pack(anchor=tk.W)
     
-    damage_label = tk.Label(info_frame, text="Dano Total: ", font=("Arial", 12))
-    damage_label.pack(anchor=tk.W)
+    rotulo_dano = tk.Label(frame_info, text="Dano Total: ", font=("Arial", 12))
+    rotulo_dano.pack(anchor=tk.W)
     
     # Legenda
-    legend_frame = tk.Frame(root)
-    legend_frame.pack(fill=tk.X, padx=20, pady=10)
+    frame_legenda = tk.Frame(raiz)
+    frame_legenda.pack(fill=tk.X, padx=20, pady=10)
     
-    tk.Label(legend_frame, text="Legenda:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w")
+    tk.Label(frame_legenda, text="Legenda:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w")
     
     # Itens da legenda
     legendas = [
@@ -113,111 +113,111 @@ def visualizar_solucao(input_file, output_file=None):
     ]
     
     for texto, cor, linha, coluna in legendas:
-        tk.Frame(legend_frame, width=20, height=20, bg=cor).grid(row=linha, column=coluna, padx=5, pady=2)
-        tk.Label(legend_frame, text=texto).grid(row=linha, column=coluna+1, sticky="w", 
+        tk.Frame(frame_legenda, width=20, height=20, bg=cor).grid(row=linha, column=coluna, padx=5, pady=2)
+        tk.Label(frame_legenda, text=texto).grid(row=linha, column=coluna+1, sticky="w", 
                                                columnspan=3 if texto == "Área de Dano (10)" else 1)
     
     # Carregar o tabuleiro
-    n, board = ler_arquivo(input_file)
+    n, tabuleiro = ler_arquivo(arquivo_entrada)
     
     # Calcular dano
-    towers, attacked_cells = calcular_dano(board, n)
+    torres, celulas_atacadas = calcular_dano(tabuleiro, n)
     
     # Resolver o problema
-    if output_file is None:
-        output_file = "temp_solution.out"
+    if arquivo_saida is None:
+        arquivo_saida = "temp_solution.out"
     
-    solution, total_damage = solve_tower_defense(input_file, output_file)
+    solucao, dano_total = resolver_tower_defense(arquivo_entrada, arquivo_saida)
     
     # Atualizar as labels com os resultados
-    path_label.config(text=f"Caminho: {solution}")
-    damage_label.config(text=f"Dano Total: {total_damage}")
+    rotulo_caminho.config(text=f"Caminho: {solucao}")
+    rotulo_dano.config(text=f"Dano Total: {dano_total}")
     
     # Funções de desenho
-    def draw_board_and_path():
+    def desenhar_tabuleiro_e_caminho():
         canvas.delete("all")
         
-        canvas_width = canvas.winfo_width() or 500
-        canvas_height = canvas.winfo_height() or 500
-        cell_size = min(canvas_width, canvas_height) // n
+        largura_canvas = canvas.winfo_width() or 500
+        altura_canvas = canvas.winfo_height() or 500
+        tamanho_celula = min(largura_canvas, altura_canvas) // n
         
         # Desenhar áreas de dano
         for i in range(n):
             for j in range(n):
-                x1, y1 = j * cell_size, i * cell_size
-                x2, y2 = x1 + cell_size, y1 + cell_size
+                x1, y1 = j * tamanho_celula, i * tamanho_celula
+                x2, y2 = x1 + tamanho_celula, y1 + tamanho_celula
                 
-                if (i, j) in attacked_cells:
+                if (i, j) in celulas_atacadas:
                     canvas.create_rectangle(x1, y1, x2, y2, fill="orange", outline="")
         
         # Desenhar o tabuleiro
         for i in range(n):
             for j in range(n):
-                x1, y1 = j * cell_size, i * cell_size
-                x2, y2 = x1 + cell_size, y1 + cell_size
+                x1, y1 = j * tamanho_celula, i * tamanho_celula
+                x2, y2 = x1 + tamanho_celula, y1 + tamanho_celula
                 
                 canvas.create_rectangle(x1, y1, x2, y2, outline="black")
                 
-                if board[i][j] == 'T':
+                if tabuleiro[i][j] == 'T':
                     canvas.create_rectangle(x1, y1, x2, y2, fill="red", outline="black")
-                    canvas.create_text(x1 + cell_size//2, y1 + cell_size//2, text="T", font=("Arial", 12, "bold"))
+                    canvas.create_text(x1 + tamanho_celula//2, y1 + tamanho_celula//2, text="T", font=("Arial", 12, "bold"))
                 elif (i, j) == (0, 0):
                     canvas.create_rectangle(x1, y1, x2, y2, fill="green", outline="black")
                 elif (i, j) == (n-1, n-1):
                     canvas.create_rectangle(x1, y1, x2, y2, fill="blue", outline="black")
                 
-                if (i, j) in attacked_cells:
-                    canvas.create_text(x1 + cell_size//2, y1 + cell_size//2, 
-                                      text=str(attacked_cells[(i, j)]), font=("Arial", 9))
+                if (i, j) in celulas_atacadas:
+                    canvas.create_text(x1 + tamanho_celula//2, y1 + tamanho_celula//2, 
+                                      text=str(celulas_atacadas[(i, j)]), font=("Arial", 9))
         
         # Desenhar o caminho
-        if solution:
+        if solucao:
             # Posição inicial
             i, j = 0, 0
             
             # Coordenadas do caminho
-            path_coords = [(j * cell_size + cell_size//2, i * cell_size + cell_size//2)]
-            path_cells = [(i, j)]
+            coords_caminho = [(j * tamanho_celula + tamanho_celula//2, i * tamanho_celula + tamanho_celula//2)]
+            celulas_caminho = [(i, j)]
             
             # Seguir o caminho
-            for direction in solution:
-                if direction == 'S': i += 1
-                elif direction == 'N': i -= 1
-                elif direction == 'L': j += 1
-                elif direction == 'O': j -= 1
+            for direcao in solucao:
+                if direcao == 'S': i += 1
+                elif direcao == 'N': i -= 1
+                elif direcao == 'L': j += 1
+                elif direcao == 'O': j -= 1
                 
-                path_coords.append((j * cell_size + cell_size//2, i * cell_size + cell_size//2))
-                path_cells.append((i, j))
+                coords_caminho.append((j * tamanho_celula + tamanho_celula//2, i * tamanho_celula + tamanho_celula//2))
+                celulas_caminho.append((i, j))
             
             # Desenhar células do caminho
-            for i, j in path_cells[1:-1]:
-                x1, y1 = j * cell_size, i * cell_size
-                x2, y2 = x1 + cell_size, y1 + cell_size
+            for i, j in celulas_caminho[1:-1]:
+                x1, y1 = j * tamanho_celula, i * tamanho_celula
+                x2, y2 = x1 + tamanho_celula, y1 + tamanho_celula
                 canvas.create_rectangle(x1, y1, x2, y2, fill="purple", stipple="gray50")
             
             # Desenhar o caminho
-            canvas.create_line(path_coords, fill="purple", width=3, arrow=tk.LAST)
+            canvas.create_line(coords_caminho, fill="purple", width=3, arrow=tk.LAST)
     
     # Configurar o redimensionamento
-    canvas.bind("<Configure>", lambda event: draw_board_and_path())
+    canvas.bind("<Configure>", lambda evento: desenhar_tabuleiro_e_caminho())
     
     # Desenhar inicialmente
-    root.update()
-    draw_board_and_path()
+    raiz.update()
+    desenhar_tabuleiro_e_caminho()
     
     # Iniciar o loop principal
-    root.mainloop()
+    raiz.mainloop()
 
 if __name__ == "__main__":
     if len(sys.argv) != 3:
         print("Uso: python tower_defense_solver.py instXX.in solXX.out")
         sys.exit(1)
     
-    input_file = sys.argv[1]
-    output_file = sys.argv[2]
+    arquivo_entrada = sys.argv[1]
+    arquivo_saida = sys.argv[2]
     
-    solution, total_damage = solve_tower_defense(input_file, output_file)
-    print(f"Solução encontrada: {solution}")
-    print(f"Dano total: {total_damage}")
+    solucao, dano_total = resolver_tower_defense(arquivo_entrada, arquivo_saida)
+    print(f"Solução encontrada: {solucao}")
+    print(f"Dano total: {dano_total}")
     
-    visualizar_solucao(input_file, output_file)
+    visualizar_solucao(arquivo_entrada, arquivo_saida)
